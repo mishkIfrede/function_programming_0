@@ -1,6 +1,6 @@
 package function_programming_0
-import function_programming_0.cli.Commands
-import function_programming_0.config.ConfigLoader
+import cli.Commands
+import config.ConfigLoader
 import function_programming_0.report.Logger
 import java.nio.file.{Files, Paths}
 // Главный модуль программы
@@ -13,7 +13,7 @@ object Main {
       println(s"Конфигурация не найдена, будет использована конфигурация по умолчанию: $configPath")
       ConfigLoader.save(configPath, ConfigLoader.defaultConfig) match {
         case Right(_)  => Logger.info("Создана конфигурация по умолчанию.")
-        case Left(err) => Logger.error(err)
+        case Left(err) => Logger.error(err.message)
       }
     }
 

@@ -1,6 +1,7 @@
-package function_programming_0.config
+package config
 import function_programming_0.model._
 import function_programming_0.report.Logger
+import cli._
 import play.api.libs.json._
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
@@ -8,22 +9,22 @@ import scala.util.Try
 // Обработчик конфигурационного файла
 object ConfigLoader {
   // загрузка конфиг-файла
-  def load(path: Path): Either[String, AppConfig] = {
+  def load(path: Path): Either[AppError, AppConfig] = {
     if (!Files.exists(path)) {
       Logger.warn(s"Конфигурационный файл не найден: $path")
-      return Left(s"Файл не найден: $path")
+      return Left(IOError.FileNotFound(path.toString)) // s"Файл не найден: $path"
     }
     Try {
       val text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8) // прочтение файла
       Json.parse(text).as[AppConfig] // превращение json файла в AppConfig
-    }.toEither.left.map(e => s"Ошибка чтения конфигурации: ${e.getMessage}") // иначе - ошибка
+    }.toEither.left.map(e => IOError.ConfigLoadFailed(path.toString, e.getMessage)) // s"Ошибка чтения конфигурации: ${e.getMessage}"
   }
   // сохранение в json
-  def save(path: Path, cfg: AppConfig): Either[String, Path] = { // Unit
+  def save(path: Path, cfg: AppConfig): Either[AppError, Path] = { // Unit
     Try {
       val json = Json.prettyPrint(Json.toJson(cfg)) // превращение конфигурации в читаемый (для человека) текст
       Files.write(path, json.getBytes(StandardCharsets.UTF_8)) // запись с кодировкой UTF-8
-    }.toEither.left.map(e => s"Ошибка записи конфигурации: ${e.getMessage}")
+    }.toEither.left.map(e => IOError.ConfigSaveFailed(path.toString, e.getMessage)) // s"Ошибка записи конфигурации: ${e.getMessage}"
   }
   // Создание дефолтного конфиг-файла (если файла нет)
   def defaultConfig: AppConfig = {
