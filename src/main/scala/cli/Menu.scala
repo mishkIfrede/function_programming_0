@@ -40,9 +40,6 @@ object ParseError {
 sealed trait DomainError extends AppError
 
 object DomainError {
-  final case class ResolveFailed(name: String) extends DomainError {
-    val message = s"Ошибка переопределения: '$name'"
-  }
 
   final case class PolicyNotFound(name: String) extends DomainError {
     val message = s"Политика '$name' не найдена"
@@ -112,22 +109,6 @@ case class Menues[T](title: String, items:Seq[MenuItem[T]], userInterface: UserI
     userInterface.printLine(" q. Выход")
     userInterface.printLine("====================================================")
   }
-
-  /** Показать меню и выполнить выбор.
-   * Left — ошибка/отмена, Right — результат выбранного действия. */
-  def runOnce(): Either[AppError, T] = {
-    printMenu()
-    userInterface.readString("> ").trim match {
-      case "q" | "0" => Left(ParseError.Canceled)
-      case s => s.toIntOption match {
-        case None => Left(ParseError.NotANumber(s))
-        case Some(n)
-          if n < 1 || n > items.length =>
-          Left(ParseError.OutOfRange(n, 1, items.length))
-        case Some(n) => items(n - 1).action()
-      }
-    }
-  }
 }
 // Модель меню - реализует пользовательский интерфейс программы
 class Menu(initialConfigPath: Path, ui:UserInterface) {
@@ -169,13 +150,14 @@ class Menu(initialConfigPath: Path, ui:UserInterface) {
             .map(n => items(n - 1).action())
             .getOrElse(Left(ParseError.NotANumber(s))) match {
             case Right(_) => () // успех
-            case Left(err) => report(err) // единая обработка
+            case Left(err) => report(err) // обработка ошибки
           }
       }
     }
   }
   Logger.close()
 
+  // Функцияя обработки ошибок
   private def report(err: AppError): Unit = {
     err match {
       case ParseError.Canceled => ui.printLine("Отменено.")
@@ -322,7 +304,7 @@ class Menu(initialConfigPath: Path, ui:UserInterface) {
               Right()
           }
         }
-
+        // Вложенное меню редактирования политики
         val editItems: Seq[MenuItem[Either[AppError, Unit]]] = Seq(
           MenuItem("Изменить описание", "---", () => Right(editDescription(name))),
           MenuItem("Добавить правило", "---", () => Right(addRule(name))),
@@ -376,7 +358,7 @@ class Menu(initialConfigPath: Path, ui:UserInterface) {
       Right()
     }
   }
-  // создание нового правила (используется в createPolicy())
+  // создание нового правила (используется в createPolicy()) - превращать в ADt неудобно, так как нужно вернуть Option
   private def readRule(): Option[Rule] = {
     ui.printLine("Создание нового правила")
     val id = ui.readString("Введите id правила (уникальный): ")
@@ -431,7 +413,7 @@ class Menu(initialConfigPath: Path, ui:UserInterface) {
     Right()
   }
 
-  // выбор предмета обработки - файл(ы) или каталог (используется в previewMatches() и processFiles())
+  // выбор предмета обработки - файл(ы) или каталог (используется в previewMatches() и processFiles()) - неудобно в ADT
   private def chooseSelection(): Option[(Selection, Option[Path])] = {
 
     println("Выберите источник (введите подходящую цифру):")
